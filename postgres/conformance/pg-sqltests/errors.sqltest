@@ -94,3 +94,16 @@ test error-drop-missing-column-of-single-column-table {
 }
 @sqlstate 42703
 expect error {}
+
+test error-foreign-key-on-missing-column {
+    CREATE TABLE p (a int PRIMARY KEY);
+    CREATE TABLE t (b int, FOREIGN KEY (x) REFERENCES p (a));
+}
+@sqlstate 42703
+expect error {}
+
+test error-foreign-key-on-table-without-columns {
+    CREATE TABLE t (FOREIGN KEY (x) REFERENCES t);
+}
+@sqlstate 42703
+expect error {}

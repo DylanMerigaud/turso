@@ -296,7 +296,10 @@ fn parse_error_sqlstate(msg: &str) -> &'static str {
         || msg.starts_with("no such object")
     {
         SQLSTATE_UNDEFINED_TABLE
-    } else if msg.contains("no such column") || msg.contains("column not found") {
+    } else if msg.contains("no such column")
+        || msg.contains("column not found")
+        || (msg.starts_with("unknown column \"") && msg.ends_with("in foreign key definition"))
+    {
         SQLSTATE_UNDEFINED_COLUMN
     } else if msg.contains("no such function") || msg.contains("no such window") {
         SQLSTATE_UNDEFINED_FUNCTION
@@ -503,6 +506,10 @@ mod tests {
         for (msg, code) in [
             ("no such table: t", SQLSTATE_UNDEFINED_TABLE),
             ("no such column: c", SQLSTATE_UNDEFINED_COLUMN),
+            (
+                "unknown column \"c\" in foreign key definition",
+                SQLSTATE_UNDEFINED_COLUMN,
+            ),
             ("no such function: f", SQLSTATE_UNDEFINED_FUNCTION),
             ("table t already exists", SQLSTATE_DUPLICATE_TABLE),
             ("relation \"t\" already exists", SQLSTATE_DUPLICATE_TABLE),

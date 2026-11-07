@@ -4475,6 +4475,38 @@ fn test_vacuum_keeps_a_table_with_autoincrement_on_int_primary_key() -> anyhow::
     Ok(())
 }
 
+/// CREATE TABLE rejects a foreign key on a column the table does not have, but
+/// a database written before that check can have one. VACUUM must keep such a
+/// table.
+#[test]
+fn test_vacuum_keeps_a_table_with_foreign_key_on_unknown_column() -> anyhow::Result<()> {
+    let dir = TempDir::new()?;
+    let db_path = dir.path().join("foreign_key_on_unknown_column.db");
+    let stored_sql = "CREATE TABLE t (a, FOREIGN KEY (x) REFERENCES p (y))";
+    {
+        let sqlite_conn = SqliteConnection::open(&db_path)?;
+        sqlite_conn.execute_batch(
+            "CREATE TABLE t (a);
+             INSERT INTO t VALUES (1);
+             PRAGMA writable_schema = ON;",
+        )?;
+        sqlite_conn.execute(
+            "UPDATE sqlite_schema SET sql = ?1 WHERE name = 't'",
+            [stored_sql],
+        )?;
+    }
+    let tmp_db = TempDatabase::new_with_existent(&db_path);
+    let conn = tmp_db.connect_limbo();
+
+    conn.execute("VACUUM")?;
+
+    let rows: Vec<(i64,)> = conn.exec_rows("SELECT a FROM t");
+    assert_eq!(rows, vec![(1,)]);
+    let schema: Vec<(String,)> = conn.exec_rows("SELECT sql FROM sqlite_schema WHERE name = 't'");
+    assert_eq!(schema, vec![(stored_sql.to_string(),)]);
+    Ok(())
+}
+
 /// Plain VACUUM reparses the live schema on the same connection. Custom types
 /// with an index on a non-monotonic encoding must still order correctly after the
 /// rewrite, and the same connection must remain able to use that type in new

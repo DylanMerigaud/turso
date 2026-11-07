@@ -769,6 +769,20 @@ fn validate(
         // Rules for new tables only: VACUUM creates the tables the database
         // already has as nested statements, and those may break these rules.
         if !is_nested {
+            // Checked here rather than in `create_table` so that databases
+            // where older Turso versions stored such tables still open.
+            for constraint in constraints {
+                if let ast::TableConstraint::ForeignKey { columns, .. } = &constraint.constraint {
+                    for column in columns {
+                        let column = column.col_name.as_str();
+                        if table.get_column(column).is_none() {
+                            bail_parse_error!(
+                                "unknown column \"{column}\" in foreign key definition"
+                            );
+                        }
+                    }
+                }
+            }
             if !table.has_rowid {
                 if table.has_autoincrement {
                     bail_parse_error!("AUTOINCREMENT is not allowed on WITHOUT ROWID tables");

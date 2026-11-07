@@ -4955,3 +4955,45 @@ test fk-deferred-upsert-rowid-alias-child-change-creates-violation {
 expect error {
     FOREIGN KEY constraint failed
 }
+
+test fk-table-constraint-unknown-child-column {
+    CREATE TABLE p (a INTEGER PRIMARY KEY);
+    CREATE TABLE c (b, FOREIGN KEY (x) REFERENCES p (a));
+}
+expect error {
+    unknown column "x" in foreign key definition
+}
+
+test fk-table-constraint-unknown-second-child-column {
+    CREATE TABLE p (a, b, PRIMARY KEY (a, b));
+    CREATE TABLE c (d, FOREIGN KEY (d, x) REFERENCES p (a, b));
+}
+expect error {
+    unknown column "x" in foreign key definition
+}
+
+test fk-table-constraint-rowid-is-not-a-child-column {
+    CREATE TABLE p (a INTEGER PRIMARY KEY);
+    CREATE TABLE c (b, FOREIGN KEY (rowid) REFERENCES p (a));
+}
+expect error {
+    unknown column "rowid" in foreign key definition
+}
+
+test fk-table-constraint-child-column-ignores-case-and-quotes {
+    CREATE TABLE p (a INTEGER PRIMARY KEY);
+    CREATE TABLE c ("Q b", d, FOREIGN KEY ("q B") REFERENCES p (a), FOREIGN KEY (D) REFERENCES p (a));
+    SELECT count(*) FROM pragma_foreign_key_list('c');
+}
+expect {
+    2
+}
+
+test fk-table-constraint-if-not-exists-skips-the-body {
+    CREATE TABLE c (b);
+    CREATE TABLE IF NOT EXISTS c (b, FOREIGN KEY (x) REFERENCES p (a));
+    SELECT sql FROM sqlite_schema WHERE name = 'c';
+}
+expect {
+    CREATE TABLE c (b)
+}
