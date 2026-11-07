@@ -599,6 +599,22 @@ test fail-alter-table-drop-unique-column {
 expect error {
 }
 
+test fail-alter-table-drop-missing-column-of-single-column-table {
+    CREATE TABLE t (a);
+    ALTER TABLE t DROP c;
+}
+expect error {
+    no such column: "c"
+}
+
+test fail-alter-table-drop-only-column {
+    CREATE TABLE t (a);
+    ALTER TABLE t DROP a;
+}
+expect error {
+    cannot drop column "a": no other columns exist
+}
+
 @cross-check-integrity
 test fail-alter-table-drop-unique-column-constraint {
     CREATE TABLE t (a, b, UNIQUE (b));
